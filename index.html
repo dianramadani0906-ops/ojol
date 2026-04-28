@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Laju-Nanggroe | Transportasi Aceh</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ════════════════════════════════════
+   CSS VARIABLES & RESET
+════════════════════════════════════ */
+:root {
+  --pink:         #E85D9F;
+  --pink-light:   #F5B9D0;
+  --pink-dark:    #C23D7F;
+  --pink-soft:    #FCE4EC;
+  --pink-glow:    rgba(232,93,159,.25);
+  --white:        #FFFFFF;
+  --bg:           #FDF5F9;
+  --surface:      #FFFFFF;
+  --border:       #F0D6E4;
+  --text:         #2C2C2C;
+  --text-dim:     #888888;
+  --text-muted:   #BDBDBD;
+  --wa-green:     #25D366;
+  --success:      #10b981;
+  --danger:       #ef4444;
+  --font-brand:   'Playfair Display', serif;
+  --font-body:    'Outfit', sans-serif;
+  --radius-sm:    10px;
+  --radius-md:    16px;
+  --radius-lg:    24px;
+  --radius-xl:    32px;
+  --shadow-sm:    0 2px 8px rgba(232,93,159,.1);
+  --shadow-md:    0 4px 20px rgba(232,93,159,.15);
+  --shadow-lg:    0 8px 40px rgba(232,93,159,.2);
+  --transition:   .3s cubic-bezier(.4,0,.2,1);
+  --sidebar-w:    260px;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* decorative blobs */
+body::before {
+  content:'';
+  position:fixed; top:-120px; right:-120px;
+  width:420px; height:420px; border-radius:50%;
+  background:radial-gradient(circle, rgba(232,93,159,.12) 0%, transparent 70%);
+  pointer-events:none; z-index:0;
+}
+body::after {
+  content:'';
+  position:fixed; bottom:-80px; left:-80px;
+  width:300px; height:300px; border-radius:50%;
+  background:radial-gradient(circle, rgba(245,185,208,.15) 0%, transparent 70%);
+  pointer-events:none; z-index:0;
+}
+
+/* ════════════════════════════════════
+   LAYOUT SHELL
+════════════════════════════════════ */
+.shell {
+  position:relative; z-index:1;
+  display:flex; min-height:100dvh;
+}
+
+/* ════════════════════════════════════
+   SIDEBAR (desktop)
+════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  position: fixed;
+  top:0; left:0; bottom:0;
+  z-index: 200;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+}
+
+.sidebar-brand {
+  padding: 28px 24px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.brand-logo {
+  font-family: var(--font-brand);
+  font-size: 1.55rem;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+.brand-sub {
+  font-size: .72rem; color: var(--text-dim);
+  margin-top: 3px; letter-spacing: .5px;
+}
+
+.sidebar-user {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.sidebar-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 1.1rem; flex-shrink: 0;
+  box-shadow: 0 0 14px var(--pink-glow);
+}
+.sidebar-user-name { font-weight: 700; font-size: .9rem; }
+.sidebar-user-role { font-size: .72rem; color: var(--pink); }
+
+.sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+
+.nav-group-label {
+  font-size: .65rem; color: var(--text-muted); font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  padding: 8px 12px 6px;
+}
+
+.nav-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  cursor: pointer; color: var(--text-dim);
+  font-size: .88rem; font-weight: 600;
+  transition: var(--transition); border: none; background: none;
+  width: 100%; text-align: left;
+  position: relative; overflow: hidden;
+}
+.nav-link i { font-size: 1rem; width: 18px; text-align: center; flex-shrink: 0; }
+.nav-link:hover { background: var(--pink-soft); color: var(--pink); }
+.nav-link.active {
+  background: linear-gradient(135deg, rgba(232,93,159,.15), rgba(245,185,208,.1));
+  color: var(--pink);
+  box-shadow: inset 3px 0 0 var(--pink);
+}
+.nav-link.active::before {
+  content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  width: 6px; height: 6px; border-radius: 50%; background: var(--pink);
+}
+
+.sidebar-balance {
+  margin: 12px; padding: 16px;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  border-radius: var(--radius-md); color: #fff;
+  box-shadow: var(--shadow-md);
+}
+.sidebar-balance-label { font-size: .72rem; opacity: .8; margin-bottom: 4px; }
+.sidebar-balance-amount { font-family: var(--font-brand); font-size: 1.25rem; font-weight: 700; }
+.topup-trigger {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.3);
+  border-radius: 8px; padding: 7px 10px;
+  font-size: .75rem; font-weight: 700; color: #fff;
+  cursor: pointer; margin-top: 10px; width: 100%;
+  transition: var(--transition);
+}
+.topup-trigger:hover { background: rgba(255,255,255,.3); }
+
+/* ════════════════════════════════════
+   MAIN CONTENT
+════════════════════════════════════ */
+.main {
+  flex: 1;
+  margin-left: var(--sidebar-w);
+  display: flex; flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* top bar */
+.topbar {
+  height: 64px; padding: 0 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,.8); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-title {
+  font-family: var(--font-brand); font-size: 1.2rem; color: var(--pink);
+}
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+.topbar-balance {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--pink-soft); padding: 7px 14px;
+  border-radius: 50px; border: 1px solid var(--border);
+}
+.topbar-balance-label { font-size: .72rem; color: var(--text-dim); }
+.topbar-balance-amount { font-weight: 800; color: var(--pink); font-size: .88rem; }
+.topbar-topup {
+  display: flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: #fff; border: none; padding: 8px 16px; border-radius: 50px;
+  font-size: .8rem; font-weight: 700; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.topbar-topup:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+/* hamburger */
+.hamburger {
+  display: none; flex-direction: column; gap: 5px;
+  cursor: pointer; padding: 6px; background: none; border: none;
+}
+.hamburger span {
+  display: block; width: 22px; height: 2px;
+  background: var(--pink); border-radius: 2px;
+  transition: var(--transition);
+}
+
+/* page content */
+.content { padding: 28px; flex: 1; }
+
+/* ════════════════════════════════════
+   PAGES
+════════════════════════════════════ */
+.page { display: none; animation: pageIn .3s ease; }
+.page.active { display: block; }
+@keyframes pageIn {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* page header */
+.page-heading {
+  margin-bottom: 24px;
+}
+.page-heading h1 {
+  font-family: var(--font-brand);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  color: var(--text);
+  line-height: 1.15;
+}
+.page-heading p { font-size: .88rem; color: var(--text-dim); margin-top: 4px; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.card:hover { box-shadow: var(--shadow-md); }
+
+/* ── HOME LAYOUT ── */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+}
+@media (max-width: 1100px) { .home-grid { grid-template-columns: 1fr; } }
+
+/* order form */
+.order-form { display: flex; flex-direction: column; gap: 16px; }
+
+.form-section-title {
+  font-size: .72rem; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px;
+}
+
+.input-wrap {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 13px 16px;
+  transition: var(--transition);
+}
+.input-wrap:focus-within {
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px rgba(232,93,159,.12);
+  background: #fff;
+}
+.input-wrap i { color: var(--pink); font-size: .95rem; width: 18px; flex-shrink: 0; }
+.input-wrap input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: var(--font-body); font-size: .9rem; color: var(--text);
+}
+.input-wrap input::placeholder { color: var(--text-muted); }
+.input-wrap input[readonly] { cursor: not-allowed; opacity: .65; }
+
+.fare-display {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, rgba(232,93,159,.07), rgba(245,185,208,.07));
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 16px;
+}
+.fare-label { font-size: .8rem; color: var(--text-dim); }
+.fare-value { font-family: var(--font-brand); font-size: 1.1rem; color: var(--pink); font-weight: 700; }
+
+/* driver grid */
+.drivers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+.driver-card {
+  background: var(--white);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.driver-card:hover { border-color: var(--pink-light); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+.driver-card.selected {
+  border-color: var(--pink);
+  background: rgba(232,93,159,.06);
+  box-shadow: 0 0 0 3px rgba(232,93,159,.15);
+}
+.driver-card img {
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 2.5px solid var(--pink); margin-bottom: 8px;
+  box-shadow: 0 0 10px var(--pink-glow);
+}
+.driver-name { font-size: .8rem; font-weight: 700; color: var(--text); }
+.driver-rating { font-size: .7rem; color: var(--text-dim); margin-top: 3px; }
+.driver-rating i { color: #f59e0b; }
+
+.btn-order {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: #fff; border: none; border-radius: var(--radius-md);
+  font-family: var(--font-brand); font-size: 1rem; font-weight: 700;
+  letter-spacing: .5px; cursor: pointer;
+  box-shadow: 0 4px 20px var(--pink-glow);
+  transition: var(--transition);
+  position: relative; overflow: hidden;
+}
+.btn-order::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+  transform:translateX(-100%); transition:.5s;
+}
+.btn-order:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--pink-glow); }
+.btn-order:hover::after { transform:translateX(100%); }
+.btn-order:active { transform: translateY(0); }
+
+/* stats sidebar */
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex; align-items: center; gap: 14px;
+  transition: var(--transition);
+}
+.stat-card:hover { box-shadow: var(--shadow-sm); }
+.stat-icon {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.stat-icon.pink { background: rgba(232,93,159,.12); color: var(--pink); }
+.stat-icon.green { background: rgba(16,185,129,.12); color: var(--success); }
+.stat-icon.blue  { background: rgba(59,130,246,.12);  color: #3b82f6; }
+.stat-value { font-family: var(--font-brand); font-size: 1.1rem; font-weight: 700; }
+.stat-label { font-size: .72rem; color: var(--text-dim); margin-top: 2px; }
+
+/* ── HISTORY ── */
+.history-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+.history-table thead th {
+  font-size: .72rem; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .8px;
+  padding: 0 16px 4px; text-align: left;
+}
+.history-table tbody tr {
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.history-table tbody tr:hover { box-shadow: var(--shadow-md); transform: translateX(2px); }
+.history-table td {
+  padding: 14px 16px; font-size: .88rem;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.history-table td:first-child { border-left: 1px solid var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.history-table td:last-child  { border-right: 1px solid var(--border); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.history-dest { font-weight: 700; }
+.history-driver { font-size: .78rem; color: var(--text-dim); margin-top: 2px; }
+.badge-done { background: rgba(16,185,129,.1); color: var(--success); border-radius: 50px; padding: 3px 10px; font-size: .72rem; font-weight: 700; }
+.history-price { font-weight: 800; color: var(--pink); font-family: var(--font-brand); }
+
+/* mobile history cards */
+.history-card-mobile {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px;
+  margin-bottom: 10px; display: flex; align-items: center; gap: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.history-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(232,93,159,.1); display: flex; align-items: center; justify-content: center; color: var(--pink); flex-shrink: 0; }
+.history-card-mobile .hcm-price { margin-left: auto; font-weight: 800; color: var(--pink); font-family: var(--font-brand); font-size: .9rem; }
+
+/* ── ABOUT ── */
+.about-hero {
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  border-radius: var(--radius-xl); padding: 48px 40px;
+  color: #fff; margin-bottom: 24px; position: relative; overflow: hidden;
+}
+.about-hero::after {
+  content: ''; position:absolute; right:-40px; top:-40px;
+  width:200px; height:200px; border-radius:50%;
+  background:rgba(255,255,255,.08);
+}
+.about-hero h2 { font-family: var(--font-brand); font-size: clamp(1.6rem, 3vw, 2.4rem); margin-bottom: 10px; }
+.about-hero p { opacity: .85; line-height: 1.7; max-width: 520px; font-size: .95rem; }
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.feature-item {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 20px;
+  transition: var(--transition);
+}
+.feature-item:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+.feature-item i { font-size: 1.4rem; color: var(--pink); margin-bottom: 10px; display: block; }
+.feature-item h4 { font-size: .88rem; font-weight: 700; margin-bottom: 4px; }
+.feature-item p { font-size: .78rem; color: var(--text-dim); line-height: 1.5; }
+
+/* ── PROFILE ── */
+.profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+@media (max-width: 768px) { .profile-grid { grid-template-columns: 1fr; } }
+
+.profile-avatar-wrap { text-align: center; padding: 28px 0; }
+.profile-avatar-big {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; color: #fff; margin: 0 auto 14px;
+  box-shadow: 0 0 24px var(--pink-glow);
+}
+.profile-name { font-family: var(--font-brand); font-size: 1.3rem; }
+.profile-role { font-size: .8rem; color: var(--pink); margin-top: 4px; }
+
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: .78rem; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .5px; }
+.form-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-family: var(--font-body);
+  font-size: .9rem; color: var(--text); outline: none;
+  transition: var(--transition);
+}
+.form-input:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,93,159,.12); background: #fff; }
+.btn-save {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: #fff; border: none; border-radius: var(--radius-md);
+  font-family: var(--font-body); font-size: .9rem; font-weight: 700;
+  cursor: pointer; box-shadow: var(--shadow-sm); transition: var(--transition);
+}
+.btn-save:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+/* ════════════════════════════════════
+   EMPTY STATE
+════════════════════════════════════ */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-state i { font-size: 3rem; margin-bottom: 14px; display: block; opacity: .4; }
+.empty-state p { font-size: .9rem; }
+
+/* ════════════════════════════════════
+   TOP UP MODAL
+════════════════════════════════════ */
+.modal-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.4); backdrop-filter: blur(6px);
+  z-index: 500; align-items: center; justify-content: center;
+}
+.modal-backdrop.open { display: flex; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.modal-box {
+  background: var(--white); border-radius: var(--radius-xl);
+  padding: 32px; width: 90%; max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+  animation: scaleIn .25s cubic-bezier(.4,0,.2,1);
+}
+@keyframes scaleIn { from{transform:scale(.9);opacity:0} to{transform:scale(1);opacity:1} }
+
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.modal-title { font-family: var(--font-brand); font-size: 1.25rem; }
+.modal-close { background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 1.1rem; padding: 4px; transition: var(--transition); }
+.modal-close:hover { color: var(--pink); }
+.modal-sub { font-size: .82rem; color: var(--text-dim); margin-bottom: 24px; }
+
+.topup-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.topup-item {
+  background: var(--bg); border: 2px solid var(--border);
+  border-radius: var(--radius-md); padding: 18px 14px;
+  text-align: center; cursor: pointer; transition: var(--transition);
+}
+.topup-item:hover {
+  border-color: var(--pink);
+  background: rgba(232,93,159,.06);
+  transform: scale(1.03);
+}
+.topup-amount { font-family: var(--font-brand); font-size: 1.05rem; color: var(--pink); font-weight: 700; }
+.topup-label  { font-size: .7rem; color: var(--text-dim); margin-top: 3px; }
+
+/* ════════════════════════════════════
+   MAP OVERLAY
+════════════════════════════════════ */
+#map-overlay {
+  display: none; position: fixed; inset: 0; z-index: 400;
+  background: var(--bg); flex-direction: column;
+}
+#map-overlay.open { display: flex; animation: fadeIn .3s ease; }
+
+#leaflet-map { flex: 1; min-height: 0; }
+
+.map-panel {
+  background: var(--white);
+  border-top: 2px solid var(--border);
+  padding: 24px 28px 28px;
+  box-shadow: 0 -4px 20px rgba(232,93,159,.1);
+}
+.map-panel-inner {
+  max-width: 700px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.map-success-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(16,185,129,.1); color: var(--success);
+  border-radius: 50px; padding: 5px 14px; font-size: .8rem; font-weight: 700;
+}
+.map-driver-info { display: flex; align-items: center; gap: 14px; }
+.map-driver-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 2px solid var(--pink); overflow: hidden; flex-shrink: 0;
+}
+.map-driver-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.map-driver-name { font-weight: 700; font-size: 1rem; }
+.map-driver-dest { font-size: .8rem; color: var(--pink); margin-top: 2px; }
+.map-actions { display: flex; gap: 12px; }
+.btn-wa {
+  flex: 1; padding: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--wa-green); color: #fff; border: none; border-radius: var(--radius-md);
+  font-family: var(--font-body); font-size: .88rem; font-weight: 700;
+  text-decoration: none; cursor: pointer; transition: var(--transition);
+}
+.btn-wa:hover { filter: brightness(1.1); }
+.btn-done {
+  flex: 1; padding: 13px; border: 2px solid var(--pink); border-radius: var(--radius-md);
+  background: rgba(232,93,159,.08); color: var(--pink);
+  font-family: var(--font-body); font-size: .88rem; font-weight: 700;
+  cursor: pointer; transition: var(--transition);
+}
+.btn-done:hover { background: rgba(232,93,159,.15); }
+
+/* ════════════════════════════════════
+   TOAST
+════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: rgba(255,255,255,.95); backdrop-filter: blur(10px);
+  border: 1px solid var(--border); border-radius: 50px;
+  padding: 11px 22px; font-size: .85rem; font-weight: 600;
+  box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none;
+  transition: opacity .3s, transform .3s; z-index: 600; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.success { color: var(--success); border-color: rgba(16,185,129,.3); }
+#toast.error   { color: var(--danger);  border-color: rgba(239,68,68,.3); }
+
+/* ════════════════════════════════════
+   MOBILE BOTTOM NAV
+════════════════════════════════════ */
+.bottom-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+  z-index: 200; padding: 0 8px;
+}
+.bottom-nav-inner {
+  display: flex; justify-content: space-around;
+}
+.bnav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10px 4px 14px; cursor: pointer; border: none; background: none;
+  color: var(--text-muted); font-size: .62rem; font-weight: 700; gap: 4px;
+  transition: var(--transition); letter-spacing: .3px;
+}
+.bnav-btn i { font-size: 1.1rem; transition: var(--transition); }
+.bnav-btn.active { color: var(--pink); }
+.bnav-btn.active i { filter: drop-shadow(0 0 5px rgba(232,93,159,.5)); }
+
+/* ════════════════════════════════════
+   MOBILE SIDEBAR OVERLAY
+════════════════════════════════════ */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  z-index: 190; backdrop-filter: blur(4px);
+}
+.sidebar-overlay.open { display: block; }
+
+/* ════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .bottom-nav { display: block; }
+  .hamburger { display: flex; }
+  .content { padding: 16px 14px 90px; }
+  .topbar { padding: 0 16px; }
+  .topbar-balance { display: none; }
+  .home-grid { grid-template-columns: 1fr; }
+  .history-table { display: none; }
+  .profile-grid { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 769px) {
+  .hamburger { display: none !important; }
+  .bottom-nav { display: none !important; }
+}
+
+@media (min-width: 769px) and (max-width: 1100px) {
+  :root { --sidebar-w: 220px; }
+  .content { padding: 22px; }
+}
+
+@media (min-width: 1400px) {
+  .content { padding: 36px; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">Laju-Nanggroe</div>
+      <div class="brand-sub">Transportasi Kebanggaan Aceh</div>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">
+  <img src="image/foto.jpeg" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+</div>
+      <div>
+        <div class="sidebar-user-name" id="sidebar-name">Dian Ramadani</div>
+        <div class="sidebar-user-role">Member Premium</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">Menu Utama</div>
+      <button class="nav-link active" onclick="navigate('home', this)">
+        <i class="fa-solid fa-house"></i> Beranda
+      </button>
+      <button class="nav-link" onclick="navigate('history', this)">
+        <i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pesanan
+      </button>
+      <button class="nav-link" onclick="navigate('about', this)">
+        <i class="fa-solid fa-circle-info"></i> Tentang Kami
+      </button>
+      <button class="nav-link" onclick="navigate('profile', this)">
+        <i class="fa-solid fa-circle-user"></i> Profil Saya
+      </button>
+    </nav>
+
+    <div class="sidebar-balance">
+      <div class="sidebar-balance-label">Saldo Laju</div>
+      <div class="sidebar-balance-amount" id="sidebar-balance">Rp 500.000</div>
+      <button class="topup-trigger" onclick="openTopup()">
+        <i class="fa-solid fa-plus"></i> Top Up Saldo
+      </button>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- ══════════════ MAIN ══════════════ -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="topbar-title" id="topbar-title">Beranda</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-balance">
+          <span class="topbar-balance-label">Saldo:</span>
+          <span class="topbar-balance-amount" id="topbar-balance">Rp 500.000</span>
+        </div>
+        <button class="topbar-topup" onclick="openTopup()">
+          <i class="fa-solid fa-wallet"></i> Top Up
+        </button>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <div class="content">
+
+      <!-- ── HOME ── -->
+      <div class="page active" id="page-home">
+        <div class="page-heading">
+          <h1>Assalamu'alaikum, <span id="greeting-name" style="color:var(--pink)">Dian Ramadani</span> 👋</h1>
+          <p>Mau kemana hari ini? Kami siap mengantarmu.</p>
+        </div>
+
+        <div class="home-grid">
+          <!-- Left: Order Form -->
+          <div class="card order-form">
+            <div class="form-section-title"><i class="fa-solid fa-route" style="margin-right:6px"></i>Detail Perjalanan</div>
+
+            <div class="input-wrap">
+              <i class="fa-solid fa-location-dot"></i>
+              <input type="text" value="Banda Aceh" readonly/>
+            </div>
+
+            <div class="input-wrap">
+              <i class="fa-solid fa-flag-checkered" style="color:var(--pink-dark)"></i>
+              <input type="text" id="input-dest" placeholder="Masukkan tujuan..." oninput="calcFare()"/>
+            </div>
+
+            <div class="fare-display">
+              <div>
+                <div class="fare-label">Estimasi Tarif</div>
+                <div class="fare-value" id="fare-val">Rp 0</div>
+              </div>
+              <i class="fa-solid fa-receipt" style="color:var(--border);font-size:1.4rem"></i>
+            </div>
+
+            <div>
+              <div class="form-section-title"><i class="fa-solid fa-users" style="margin-right:6px"></i>Pilih Driver</div>
+              <div class="drivers-grid" id="drivers-grid"></div>
+            </div>
+
+            <button class="btn-order" onclick="placeOrder()">
+              <i class="fa-solid fa-bolt"></i> Laju Sekarang!
+            </button>
+          </div>
+
+          <!-- Right: Stats -->
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="stat-card">
+              <div class="stat-icon pink"><i class="fa-solid fa-wallet"></i></div>
+              <div>
+                <div class="stat-value" id="stat-balance">Rp 500.000</div>
+                <div class="stat-label">Saldo Aktif</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon green"><i class="fa-solid fa-check-circle"></i></div>
+              <div>
+                <div class="stat-value" id="stat-trips">0</div>
+                <div class="stat-label">Total Perjalanan</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue"><i class="fa-solid fa-map-location-dot"></i></div>
+              <div>
+                <div class="stat-value">Banda Aceh</div>
+                <div class="stat-label">Lokasi Saat Ini</div>
+              </div>
+            </div>
+
+            <div class="card" style="background:linear-gradient(135deg,var(--pink),var(--pink-dark));color:#fff;padding:20px">
+              <div style="font-size:.75rem;opacity:.8;margin-bottom:6px">💡 Tips</div>
+              <div style="font-size:.88rem;line-height:1.6">Masukkan tujuan yang detail agar tarif lebih akurat dan driver mudah menemukanmu.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── HISTORY ── -->
+      <div class="page" id="page-history">
+        <div class="page-heading">
+          <h1>Riwayat Pesanan</h1>
+          <p>Semua perjalananmu tercatat dengan rapi di sini.</p>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <!-- Desktop table -->
+          <table class="history-table" id="history-table">
+            <thead>
+              <tr>
+                <th style="padding:16px 16px 8px">Tujuan</th>
+                <th>Driver</th>
+                <th>Tanggal</th>
+                <th>Status</th>
+                <th style="text-align:right;padding-right:20px">Tarif</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody">
+              <tr><td colspan="5" style="text-align:center;padding:48px;color:var(--text-muted)">Belum ada perjalanan</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Mobile cards -->
+        <div id="history-mobile"></div>
+      </div>
+
+      <!-- ── ABOUT ── -->
+      <div class="page" id="page-about">
+        <div class="about-hero">
+          <h2>Laju-Nanggroe</h2>
+          <p>Aplikasi transportasi online kebanggaan rakyat Aceh. Aman, cepat, terpercaya, dan penuh berkah untuk setiap perjalananmu.</p>
+        </div>
+        <div class="page-heading">
+          <h1>Mengapa Laju-Nanggroe?</h1>
+          <p>Kami hadir untuk membuat setiap perjalanan menjadi lebih mudah.</p>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-item">
+            <i class="fa-solid fa-shield-halved"></i>
+            <h4>Aman & Terverifikasi</h4>
+            <p>Semua driver telah melalui seleksi ketat dan terverifikasi identitasnya.</p>
+          </div>
+          <div class="feature-item">
+            <i class="fa-solid fa-bolt"></i>
+            <h4>Respons Cepat</h4>
+            <p>Driver kami siap melayani dalam hitungan menit kapanpun kamu butuh.</p>
+          </div>
+          <div class="feature-item">
+            <i class="fa-solid fa-tags"></i>
+            <h4>Harga Terjangkau</h4>
+            <p>Tarif transparan tanpa biaya tersembunyi. Sesuai kantong warga Aceh.</p>
+          </div>
+          <div class="feature-item">
+            <i class="fa-solid fa-map-location-dot"></i>
+            <h4>Lacak Real-time</h4>
+            <p>Pantau perjalanan secara langsung melalui peta interaktif kami.</p>
+          </div>
+          <div class="feature-item">
+            <i class="fa-brands fa-whatsapp"></i>
+            <h4>Chat Langsung</h4>
+            <p>Hubungi driver langsung via WhatsApp untuk komunikasi lebih mudah.</p>
+          </div>
+          <div class="feature-item">
+            <i class="fa-solid fa-headset"></i>
+            <h4>Dukungan 24/7</h4>
+            <p>Tim kami selalu siap membantu kapanpun kamu membutuhkan bantuan.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PROFILE ── -->
+      <div class="page" id="page-profile">
+        <div class="page-heading">
+          <h1>Profil Saya</h1>
+          <p>Kelola informasi akun dan preferensi perjalananmu.</p>
+        </div>
+        <div class="profile-grid">
+          <div class="card" style="text-align:center">
+            <div class="profile-avatar-big" style="overflow:hidden">
+  <img src="image/foto.jpeg" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+</div>
+            <div class="profile-name" id="prof-display-name">Dian Ramadani</div>
+            <div class="profile-role">Member Premium</div>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+              <div style="font-size:.78rem;color:var(--text-dim)">Saldo Aktif</div>
+              <div style="font-family:var(--font-brand);font-size:1.3rem;color:var(--pink);font-weight:700;margin-top:4px" id="prof-balance">Rp 500.000</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="form-section-title" style="margin-bottom:18px">Edit Informasi Akun</div>
+            <div class="form-group">
+              <label class="form-label">Nama Lengkap</label>
+              <input class="form-input" id="edit-name" type="text" value="Dian Ramadani" placeholder="Nama kamu"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nomor WhatsApp</label>
+              <input class="form-input" id="edit-phone" type="tel" value="6282200000000" placeholder="628xxxxx"/>
+            </div>
+            <button class="btn-save" onclick="saveProfile()">
+              <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ══════════════ BOTTOM NAV (mobile) ══════════════ -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bnav-btn active" onclick="navigate('home', this, true)">
+      <i class="fa-solid fa-house"></i>Beranda
+    </button>
+    <button class="bnav-btn" onclick="navigate('history', this, true)">
+      <i class="fa-solid fa-clock-rotate-left"></i>Riwayat
+    </button>
+    <button class="bnav-btn" onclick="navigate('about', this, true)">
+      <i class="fa-solid fa-circle-info"></i>Tentang
+    </button>
+    <button class="bnav-btn" onclick="navigate('profile', this, true)">
+      <i class="fa-solid fa-circle-user"></i>Profil
+    </button>
+  </div>
+</nav>
+
+<!-- ══════════════ TOP UP MODAL ══════════════ -->
+<div class="modal-backdrop" id="topup-modal" onclick="handleModalClick(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Top Up Saldo</div>
+      <button class="modal-close" onclick="closeTopup()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <p class="modal-sub">Pilih nominal top up yang kamu inginkan</p>
+    <div class="topup-grid">
+      <div class="topup-item" onclick="doTopup(20000)">
+        <div class="topup-amount">Rp 20.000</div>
+        <div class="topup-label">Starter</div>
+      </div>
+      <div class="topup-item" onclick="doTopup(50000)">
+        <div class="topup-amount">Rp 50.000</div>
+        <div class="topup-label">Popular</div>
+      </div>
+      <div class="topup-item" onclick="doTopup(100000)">
+        <div class="topup-amount">Rp 100.000</div>
+        <div class="topup-label">Rekomendasi ✨</div>
+      </div>
+      <div class="topup-item" onclick="doTopup(200000)">
+        <div class="topup-amount">Rp 200.000</div>
+        <div class="topup-label">Premium</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MAP OVERLAY ══════════════ -->
+<div id="map-overlay">
+  <div id="leaflet-map"></div>
+  <div class="map-panel">
+    <div class="map-panel-inner">
+      <div><span class="map-success-badge"><i class="fa-solid fa-check"></i> Pesanan Berhasil!</span></div>
+      <div class="map-driver-info">
+        <div class="map-driver-avatar"><img id="map-driver-img" src="" alt=""/></div>
+        <div>
+          <div class="map-driver-name" id="map-driver-name">—</div>
+          <div class="map-driver-dest" id="map-driver-dest">—</div>
+        </div>
+      </div>
+      <div class="map-actions">
+        <a class="btn-wa" id="wa-link" href="#" target="_blank">
+          <i class="fa-brands fa-whatsapp"></i> Chat Driver
+        </a>
+        <button class="btn-done" onclick="closeMap()">
+          <i class="fa-solid fa-check"></i> Selesai
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div id="toast"></div>
+
+<script>
+/* ─── STATE ─────────────────────────────── */
+const state = {
+  balance: 500000,
+  user: { name: 'Dian Ramadani', phone: '6282200000000' },
+  selectedDriver: null,
+  history: [],
+  leafletMap: null,
+};
+
+/* ─── DRIVERS ─────────────────────────────── */
+const drivers = [
+  { id:1, name:'Ahmed Basikal',  wa:'6282275216742', img:'driver/ahmed.jpeg', rating:'4.9' },
+  { id:2, name:'Mamat',  wa:'6285165992657', img:'driver/mamat.jpg', rating:'4.8' },
+  { id:3, name:'Ilham',   wa:'6281234567890', img:'driver/ilham.jpg', rating:'5.0' },
+  { id:4, name:'Fauzi',  wa:'6289988776655', img:'driver/fauzi.jpg', rating:'4.7' },
+];
+
+/* ─── INIT ─────────────────────────────── */
+function init() {
+  renderDrivers();
+  updateAllBalances();
+}
+
+/* ─── DRIVERS ─────────────────────────────── */
+function renderDrivers() {
+  const grid = document.getElementById('drivers-grid');
+  grid.innerHTML = '';
+  drivers.forEach((d, i) => {
+    const card = document.createElement('div');
+    card.className = 'driver-card' + (i === 0 ? ' selected' : '');
+    card.id = 'drv-' + d.id;
+    card.onclick = () => selectDriver(d.id);
+    card.innerHTML = `
+      <img src="${d.img}" alt="${d.name}"/>
+      <div class="driver-name">${d.name}</div>
+      <div class="driver-rating"><i class="fa-solid fa-star"></i> ${d.rating}</div>`;
+    grid.appendChild(card);
+  });
+  state.selectedDriver = drivers[0];
+}
+
+function selectDriver(id) {
+  state.selectedDriver = drivers.find(d => d.id === id);
+  document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('drv-' + id).classList.add('selected');
+}
+
+/* ─── FARE ─────────────────────────────── */
+function calcFare() {
+  const dest = document.getElementById('input-dest').value.trim();
+  const fare = dest.length > 0 ? dest.length * 1500 + 12000 : 0;
+  document.getElementById('fare-val').textContent = 'Rp ' + fare.toLocaleString('id-ID');
+}
+
+function getCurrentFare() {
+  const dest = document.getElementById('input-dest').value.trim();
+  return dest.length > 0 ? dest.length * 1500 + 12000 : 0;
+}
+
+/* ─── ORDER ─────────────────────────────── */
+function placeOrder() {
+  const dest = document.getElementById('input-dest').value.trim();
+  if (!dest) { toast('Masukkan tujuan terlebih dahulu!', 'error'); return; }
+  const fare = getCurrentFare();
+  if (state.balance < fare) { toast('Saldo tidak cukup! Silakan top up dulu.', 'error'); return; }
+
+  state.balance -= fare;
+  const d = state.selectedDriver;
+  const now = new Date();
+  state.history.unshift({
+    dest, fare, driver: d.name, img: d.img, wa: d.wa,
+    date: now.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}),
+  });
+
+  updateAllBalances();
+  renderHistory();
+
+  // show map
+  document.getElementById('map-driver-name').textContent = d.name + ' sedang menuju lokasimu';
+  document.getElementById('map-driver-dest').textContent = '📍 Tujuan: ' + dest;
+  document.getElementById('map-driver-img').src = d.img;
+  document.getElementById('wa-link').href = 'https://wa.me/' + d.wa + '?text=Halo+' + encodeURIComponent(d.name) + ',+saya+sudah+pesan+ride!';
+  document.getElementById('map-overlay').classList.add('open');
+  initMap();
+
+  document.getElementById('input-dest').value = '';
+  document.getElementById('fare-val').textContent = 'Rp 0';
+  document.getElementById('stat-trips').textContent = state.history.length;
+}
+
+/* ─── MAP ─────────────────────────────── */
+function initMap() {
+  if (state.leafletMap) { state.leafletMap.remove(); state.leafletMap = null; }
+  const lat = 5.548 + (Math.random()-.5)*.015;
+  const lng = 95.323 + (Math.random()-.5)*.015;
+  const map = L.map('leaflet-map', { zoomControl: true }).setView([lat, lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
+  }).addTo(map);
+  const iconCar = L.divIcon({ className:'', html:'<div style="font-size:28px">🚗</div>', iconAnchor:[14,14] });
+  const iconDest = L.divIcon({ className:'', html:'<div style="font-size:26px">📍</div>', iconAnchor:[14,26] });
+  L.marker([lat, lng], {icon: iconCar}).addTo(map).bindPopup('Driver kamu').openPopup();
+  const dlat = lat + (Math.random()-.5)*.008;
+  const dlng = lng + (Math.random()-.5)*.008;
+  L.marker([dlat, dlng], {icon: iconDest}).addTo(map);
+  L.polyline([[lat,lng],[dlat,dlng]], {color:'#E85D9F', weight:4, dashArray:'10 6'}).addTo(map);
+  state.leafletMap = map;
+}
+
+function closeMap() {
+  document.getElementById('map-overlay').classList.remove('open');
+  if (state.leafletMap) { state.leafletMap.remove(); state.leafletMap = null; }
+  toast('Perjalanan selesai! Terima kasih 🎉', 'success');
+}
+
+/* ─── HISTORY ─────────────────────────────── */
+function renderHistory() {
+  // Desktop table
+  const tbody = document.getElementById('history-tbody');
+  if (!state.history.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:48px;color:var(--text-muted)">Belum ada perjalanan</td></tr>';
+    document.getElementById('history-mobile').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = state.history.map(h => `
+    <tr>
+      <td><div class="history-dest">${h.dest}</div><div class="history-driver">Driver: ${h.driver}</div></td>
+      <td style="color:var(--text-dim);font-size:.85rem">${h.driver}</td>
+      <td style="color:var(--text-dim);font-size:.85rem">${h.date}</td>
+      <td><span class="badge-done">Selesai</span></td>
+      <td style="text-align:right;padding-right:20px"><span class="history-price">Rp ${h.fare.toLocaleString('id-ID')}</span></td>
+    </tr>`).join('');
+
+  // Mobile cards
+  document.getElementById('history-mobile').innerHTML = state.history.map(h => `
+    <div class="history-card-mobile">
+      <div class="history-icon"><i class="fa-solid fa-car"></i></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:.9rem">${h.dest}</div>
+        <div style="font-size:.75rem;color:var(--text-dim);margin-top:2px">${h.driver} · ${h.date}</div>
+      </div>
+      <div class="hcm-price">Rp ${h.fare.toLocaleString('id-ID')}</div>
+    </div>`).join('');
+}
+
+/* ─── TOP UP ─────────────────────────────── */
+function openTopup() { document.getElementById('topup-modal').classList.add('open'); }
+function closeTopup() { document.getElementById('topup-modal').classList.remove('open'); }
+function handleModalClick(e) { if (e.target === document.getElementById('topup-modal')) closeTopup(); }
+
+function doTopup(amount) {
+  state.balance += amount;
+  updateAllBalances();
+  closeTopup();
+  toast('Top up Rp ' + amount.toLocaleString('id-ID') + ' berhasil! 💰', 'success');
+}
+
+/* ─── PROFILE ─────────────────────────────── */
+function saveProfile() {
+  const name = document.getElementById('edit-name').value.trim();
+  const phone = document.getElementById('edit-phone').value.trim();
+  if (!name || !phone) { toast('Nama dan nomor tidak boleh kosong!', 'error'); return; }
+  state.user = { name, phone };
+  document.getElementById('greeting-name').textContent = name;
+  document.getElementById('sidebar-name').textContent = name;
+  document.getElementById('prof-display-name').textContent = name;
+  document.getElementById('home-greeting') && (document.getElementById('home-greeting').textContent = name);
+  toast('Profil berhasil diperbarui ✅', 'success');
+}
+
+/* ─── BALANCE SYNC ─────────────────────────────── */
+function updateAllBalances() {
+  const fmt = 'Rp ' + state.balance.toLocaleString('id-ID');
+  ['sidebar-balance','topbar-balance','stat-balance','prof-balance'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = fmt;
+  });
+}
+
+/* ─── NAVIGATION ─────────────────────────────── */
+const pageTitles = { home:'Beranda', history:'Riwayat Pesanan', about:'Tentang Kami', profile:'Profil Saya' };
+
+function navigate(page, el, isMobile = false) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+
+  // sidebar nav
+  document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+  // bottom nav
+  document.querySelectorAll('.bnav-btn').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+
+  // sync the other nav
+  if (isMobile) {
+    const sideLinks = document.querySelectorAll('.nav-link');
+    const idx = ['home','history','about','profile'].indexOf(page);
+    if (sideLinks[idx]) sideLinks[idx].classList.add('active');
+  } else {
+    const bBtns = document.querySelectorAll('.bnav-btn');
+    const idx = ['home','history','about','profile'].indexOf(page);
+    if (bBtns[idx]) bBtns[idx].classList.add('active');
+  }
+
+  document.getElementById('topbar-title').textContent = pageTitles[page] || '';
+  if (page === 'history') renderHistory();
+  if (isMobile) closeSidebar();
+}
+
+/* ─── SIDEBAR TOGGLE ─────────────────────────────── */
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+/* ─── TOAST ─────────────────────────────── */
+let toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3200);
+}
+
+init();
+</script>
+</body>
+</html>
